@@ -11,7 +11,7 @@ from threading import Thread
 TOKEN = "8613218758:AAGpN9S6xJnQhSQ21FG4BzERNp5-RbTC6BY"
 LINK_DICH = "https://link4m.com/Kxz7nMs"
 KEY_MO_KHOA = "HUAN2604"
-ID_ADMIN_VIP = [8514251389] # ID của bạn
+ID_ADMIN_VIP = [8514251389,7945857847] # ID của bạn
 
 bot = telebot.TeleBot(TOKEN)
 user_usage = {}
