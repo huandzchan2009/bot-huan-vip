@@ -11,7 +11,7 @@ from threading import Thread
 TOKEN = "8613218758:AAGpN9S6xJnQhSQ21FG4BzERNp5-RbTC6BY"
 LINK_DICH = "https://link4m.com/Kxz7nMs"
 KEY_MO_KHOA = "HUAN2604"
-ID_ADMIN_VIP = [8514251389,7945857847] # ID của bạn
+ID_ADMIN_VIP = [8514251389] # ID của bạn
 
 bot = telebot.TeleBot(TOKEN)
 user_usage = {}
@@ -53,9 +53,16 @@ def get_main_menu():
 def send_welcome(m):
     uid = m.chat.id
     check_user(uid)
-    status = "👑 Thành viên PREMIUM" if uid in ID_ADMIN_VIP else "👤 Thành viên thường"
     
-    welcome_text = f"""
+    # Thông báo chúc mừng dành riêng cho VIP
+    if uid in ID_ADMIN_VIP:
+        status = "👑 Thành viên PREMIUM"
+        welcome_text = f"✨ *CHÚC MỪNG BẠN ĐÃ LÀ THÀNH VIÊN VIP!* ✨\n\n"
+    else:
+        status = "👤 Thành viên thường"
+        welcome_text = ""
+    
+    welcome_text += f"""
 🌟 *HỆ THỐNG SCAN ACC LIÊN QUÂN - ADMIN HUÂN* 🌟
 ━━━━━━━━━━━━━━━━━━━
 
@@ -122,7 +129,12 @@ def handle_text(m):
         bot.send_message(uid, msg, reply_markup=markup)
         return
 
-    bot.send_message(uid, f"🚀 Đang quét {qty} tài khoản...")
+    # Thông báo bắt đầu quét riêng cho VIP
+    if uid in ID_ADMIN_VIP:
+        bot.send_message(uid, f"🚀 *ĐẶC QUYỀN VIP:* Đang quét {qty} tài khoản chất lượng cao cho bạn...", parse_mode="Markdown")
+    else:
+        bot.send_message(uid, f"🚀 Đang quét {qty} tài khoản...")
+
     for i in range(qty):
         try:
             res = requests.get("https://keyherlyswar.x10.mx/Apidocs/reg/reglq.php", timeout=10).json()
@@ -130,7 +142,14 @@ def handle_text(m):
                 if uid not in ID_ADMIN_VIP:
                     user_usage[uid]['total'] += 1
                 acc_info = f"{res['result'][0]['account']}|{res['result'][0]['password']}"
-                bot.send_message(uid, f"✅ STT {i+1}: `{acc_info}`", parse_mode="Markdown")
+                
+                # Định dạng kết quả cho VIP đẹp hơn
+                if uid in ID_ADMIN_VIP:
+                    prefix = f"✨ VIP {i+1}"
+                else:
+                    prefix = f"✅ STT {i+1}"
+                    
+                bot.send_message(uid, f"{prefix}: `{acc_info}`", parse_mode="Markdown")
             else:
                 bot.send_message(uid, "❌ Kho acc hiện tại đang trống.")
                 break
