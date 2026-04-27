@@ -33,7 +33,6 @@ def check_user(uid):
     now = datetime.datetime.now()
     today = now.strftime('%Y-%m-%d')
     if uid not in user_usage or user_usage[uid].get('date') != today:
-        # Mỗi ngày mặc định có 5 lượt ban đầu
         user_usage[uid] = {'total': 0, 'limit': 5, 'date': today}
 
 def get_main_menu():
@@ -96,7 +95,6 @@ def handle_text(m):
     text = m.text.strip()
     check_user(uid)
 
-    # Nhập Key: Hiển thị 10 nhưng set giới hạn là 15 (5 gốc + 10 thêm)
     if text.upper() == KEY_MO_KHOA:
         user_usage[uid]['limit'] = 15 
         bot.send_message(uid, "🔓 Xác thực thành công! Bạn có thêm 10 lượt (Tổng 15 lượt) cho hôm nay.")
@@ -109,12 +107,13 @@ def handle_text(m):
     if qty > 10: qty = 10
     if qty <= 0: return
 
-    # Kiểm tra giới hạn
+    # Kiểm tra giới hạn ban đầu
     if uid not in ID_ADMIN_VIP and user_usage[uid]['total'] >= user_usage[uid]['limit']:
+        markup = InlineKeyboardMarkup()
         if user_usage[uid]['limit'] == 5:
-            markup = InlineKeyboardMarkup()
-            markup.add(InlineKeyboardButton("🔗 Vượt link lấy mã KEY", url=LINK_DICH))
-            bot.send_message(uid, "❌ Hết lượt free! Vượt link để nhận thêm 10 lượt:", reply_markup=markup)
+            # SỬA: Thay link thô bằng nút bấm ẩn link cho chuyên nghiệp
+            markup.add(InlineKeyboardButton("🚀 LẤY MÃ KEY NHẬN 10 LƯỢT", url=LINK_DICH))
+            bot.send_message(uid, "❌ Hết lượt free! Nhấn nút dưới đây để nhận thêm 10 lượt:", reply_markup=markup)
         else:
             bot.send_message(uid, "🚫 Bạn đã đạt giới hạn 15 lượt hôm nay! Vui lòng mua VIP hoặc đợi đến 12h trưa mai.")
         return
@@ -124,6 +123,11 @@ def handle_text(m):
     bot.send_message(uid, msg_scan, parse_mode="Markdown")
 
     for i in range(qty):
+        # SỬA: Kiểm tra lượt dùng NGAY TRONG vòng lặp để tránh scan lố lượt
+        if uid not in ID_ADMIN_VIP and user_usage[uid]['total'] >= user_usage[uid]['limit']:
+            bot.send_message(uid, "⚠️ Đã dừng quét vì bạn vừa dùng hết lượt free!")
+            break
+
         try:
             res = requests.get("https://keyherlyswar.x10.mx/Apidocs/reg/reglq.php", timeout=10).json()
             if res.get("status") and res.get("result"):
