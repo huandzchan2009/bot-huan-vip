@@ -9,7 +9,7 @@ from threading import Thread
 
 # --- CẤU HÌNH ---
 TOKEN = "8613218758:AAGpN9S6xJnQhSQ21FG4BzERNp5-RbTC6BY"
-LINK_DICH = "https://link4m.com/Kxz7nMs"
+LINK_DICH = "https://fnote.net/notes/2QsYGR"
 KEY_MO_KHOA = "HUAN2604"
 ID_ADMIN_VIP = [8514251389] 
 
