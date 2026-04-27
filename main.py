@@ -6,6 +6,10 @@ import datetime
 import os
 from flask import Flask
 from threading import Thread
+import urllib3
+
+# Tắt cảnh báo SSL không an toàn để tránh làm bẩn nhật ký log
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 # --- CẤU HÌNH ---
 TOKEN = "8613218758:AAGpN9S6xJnQhSQ21FG4BzERNp5-RbTC6BY"
@@ -107,42 +111,46 @@ def handle_text(m):
     if qty > 10: qty = 10
     if qty <= 0: return
 
-    # Kiểm tra giới hạn ban đầu
     if uid not in ID_ADMIN_VIP and user_usage[uid]['total'] >= user_usage[uid]['limit']:
         markup = InlineKeyboardMarkup()
         if user_usage[uid]['limit'] == 5:
-            # SỬA: Thay link thô bằng nút bấm ẩn link cho chuyên nghiệp
             markup.add(InlineKeyboardButton("🚀 LẤY MÃ KEY NHẬN 10 LƯỢT", url=LINK_DICH))
             bot.send_message(uid, "❌ Hết lượt free! Nhấn nút dưới đây để nhận thêm 10 lượt:", reply_markup=markup)
         else:
             bot.send_message(uid, "🚫 Bạn đã đạt giới hạn 15 lượt hôm nay! Vui lòng mua VIP hoặc đợi đến 12h trưa mai.")
         return
 
-    # Quét Acc
     msg_scan = "🚀 *VIP ĐANG QUÉT...*" if uid in ID_ADMIN_VIP else f"🚀 Đang quét {qty} tài khoản..."
     bot.send_message(uid, msg_scan, parse_mode="Markdown")
 
     for i in range(qty):
-        # SỬA: Kiểm tra lượt dùng NGAY TRONG vòng lặp để tránh scan lố lượt
         if uid not in ID_ADMIN_VIP and user_usage[uid]['total'] >= user_usage[uid]['limit']:
             bot.send_message(uid, "⚠️ Đã dừng quét vì bạn vừa dùng hết lượt free!")
             break
 
         try:
-            res = requests.get("https://keyherlyswar.x10.mx/Apidocs/reg/reglq.php", timeout=10).json()
-            if res.get("status") and res.get("result"):
-                if uid not in ID_ADMIN_VIP:
-                    user_usage[uid]['total'] += 1
-                acc_info = f"{res['result'][0]['account']}|{res['result'][0]['password']}"
-                prefix = f"✨ VIP {i+1}" if uid in ID_ADMIN_VIP else f"✅ STT {i+1}"
-                bot.send_message(uid, f"{prefix}: `{acc_info}`", parse_mode="Markdown")
+            # Sửa lỗi API: Thêm verify=False và kiểm tra dữ liệu phản hồi
+            response = requests.get("https://keyherlyswar.x10.mx/Apidocs/reg/reglq.php", timeout=10, verify=False)
+            if response.status_code == 200:
+                res = response.json()
+                if res.get("status") and "result" in res and len(res["result"]) > 0:
+                    if uid not in ID_ADMIN_VIP:
+                        user_usage[uid]['total'] += 1
+                    
+                    acc_data = res['result'][0]
+                    acc_info = f"{acc_data['account']}|{acc_data['password']}"
+                    prefix = f"✨ VIP {i+1}" if uid in ID_ADMIN_VIP else f"✅ STT {i+1}"
+                    bot.send_message(uid, f"{prefix}: `{acc_info}`", parse_mode="Markdown")
+                else:
+                    bot.send_message(uid, "❌ Kho acc trống.")
+                    break
             else:
-                bot.send_message(uid, "❌ Kho acc trống.")
+                bot.send_message(uid, f"❌ Lỗi API (Mã: {response.status_code}).")
                 break
-        except:
-            bot.send_message(uid, "❌ Lỗi API.")
+        except Exception:
+            bot.send_message(uid, "❌ Lỗi kết nối API.")
             break
-        time.sleep(0.5)
+        time.sleep(0.8) # Nghỉ một chút để tránh bị API chặn vì yêu cầu quá nhanh
 
 if __name__ == "__main__":
     keep_alive()
